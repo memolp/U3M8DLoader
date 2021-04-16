@@ -121,15 +121,26 @@ def download(ts_urls, root="", path="./", comb=False, comb_filename="temp.ts", *
             url = os.path.join(root, url)
         base_name = os.path.basename(url)
         print("[DEBUG] download url={0} ({1}/{2})".format(url, i+1, total))
-        ts_response = requests.get(url, params=kwargs.get("params", None), **kwargs)
+        save_file = comb_filename
+        save_mode = "ab+"
+        # 非合并情况下，是单个文件保存的
+        if not comb:
+            if not os.path.exists(path):
+                os.makedirs(path)
+            save_file = os.path.join(path, base_name)
+            # 已经存在就继续下一个，防止重复下载
+            if os.path.exists(save_file):
+                continue
+            save_mode = "wb"
+
+        # 开始执行下载, 看看有没有额外参数需要传入
+        params = kwargs.get("params", None)
+        if "params" in kwargs:
+            del kwargs['params']
+        ts_response = requests.get(url, params=params, **kwargs)
         if not ts_response.ok:
             raise Exception("url:{0} request error!".format(url))
-        ts_data = ts_response.content
-        if comb:
-            with open(comb_filename, "ab+") as pf:
-                pf.write(ts_data)
-        else:
-            save_file = os.path.join(path, base_name)
-            with open(save_file, "wb") as pf:
-                pf.write(ts_data)
+        # save_file 保存
+        with open(save_file, save_mode) as pf:
+            pf.write(ts_response.content)
 
